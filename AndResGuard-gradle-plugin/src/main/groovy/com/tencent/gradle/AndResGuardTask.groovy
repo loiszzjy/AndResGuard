@@ -1,5 +1,6 @@
 package com.tencent.gradle
 
+import com.tencent.mm.androlib.res.util.StringUtil
 import com.tencent.mm.directory.PathNotExist
 import com.tencent.mm.resourceproguard.InputParam
 import com.tencent.mm.resourceproguard.Main
@@ -23,17 +24,20 @@ class AndResGuardTask extends DefaultTask {
         outputs.upToDateWhen { false }
         android = project.extensions.android
         configuration = project.andResGuard
+
         android.applicationVariants.all { variant ->
             variant.outputs.each { output ->
                 // remove "resguard"
                 String variantName = this.name["resguard".length()..-1]
                 if (variantName.equalsIgnoreCase(variant.buildType.name as String)
                     || isTargetFlavor(variantName, variant.productFlavors, variant.buildType.name)
+                    || variantName.equalsIgnoreCase("UseApk")
                 ) {
                     buildConfigs << new BuildInfo(
                             output.outputFile,
                             variant.variantData.variantConfiguration.signingConfig,
-                            variant.variantData.variantConfiguration.applicationId
+                            variant.variantData.variantConfiguration.applicationId,
+                            variant.buildType.name
                     )
                 }
             }
@@ -66,58 +70,70 @@ class AndResGuardTask extends DefaultTask {
         project.logger.info("[AndResGuard] configuartion:$configuration")
         project.logger.info("[AndResGuard] BuildConfigs:$buildConfigs")
 
-        ExecutorExtension sevenzip = project.extensions.findByName("sevenzip") as ExecutorExtension
-
-        buildConfigs.each { config ->
-            if (config.file == null || !config.file.exists()) {
-                throw new PathNotExist("Original APK not existed")
-            }
-            String absPath = config.file.getAbsolutePath()
-            def signConfig = config.signConfig
-            String packageName = config.packageName
-            ArrayList<String> whiteListFullName = new ArrayList<>()
-            configuration.whiteList.each { res ->
-                if (res.startsWith("R")) {
-                    whiteListFullName.add(packageName + "." + res)
-                } else {
-                    whiteListFullName.add(res)
+        if (StringUtil.isPresent(configuration.sourceApk)
+                && new File(configuration.sourceApk).exists()) {
+            buildConfigs.each { config ->
+                if (config.buildType == configuration.sourceBuildType) {
+                    RunGradleTask(config, configuration.sourceApk)
                 }
             }
-
-            InputParam.Builder builder = new InputParam.Builder()
-                    .setMappingFile(configuration.mappingFile)
-                    .setWhiteList(whiteListFullName)
-                    .setUse7zip(configuration.use7zip)
-                    .setMetaName(configuration.metaName)
-                    .setKeepRoot(configuration.keepRoot)
-                    .setCompressFilePattern(configuration.compressFilePattern)
-                    .setZipAlign(getZipAlignPath())
-                    .setSevenZipPath(sevenzip.path)
-                    .setOutBuilder(useFolder(config.file))
-                    .setApkPath(absPath)
-                    .setUseSign(configuration.useSign)
-                    .setDigestAlg(configuration.digestalg)
-
-            if (configuration.finalApkBackupPath != null && configuration.finalApkBackupPath.length() > 0) {
-                builder.setFinalApkBackupPath(configuration.finalApkBackupPath)
-            } else {
-                builder.setFinalApkBackupPath(absPath)
-            }
-
-            if (configuration.useSign) {
-                if (signConfig == null) {
-                    throw new GradleException("can't the get signConfig for release build")
+        } else {
+            buildConfigs.each { config ->
+                if (config.file == null || !config.file.exists()) {
+                    throw new PathNotExist("Original APK not existed")
                 }
-                builder.setSignFile(signConfig.storeFile)
-                        .setKeypass(signConfig.keyPassword)
-                        .setStorealias(signConfig.keyAlias)
-                        .setStorepass(signConfig.storePassword)
-                if (signConfig.hasProperty('v2SigningEnabled') && signConfig.v2SigningEnabled) {
-                    builder.setSignatureType(InputParam.SignatureType.SchemaV2)
-                }
+                RunGradleTask(config, config.file.getAbsolutePath())
             }
-            InputParam inputParam = builder.create()
-            Main.gradleRun(inputParam)
         }
+    }
+
+    def RunGradleTask(config, String absPath) {
+        def signConfig = config.signConfig
+        String packageName = config.packageName
+        ArrayList<String> whiteListFullName = new ArrayList<>()
+        ExecutorExtension sevenzip =
+                project.extensions.findByName("sevenzip") as ExecutorExtension
+        configuration.whiteList.each { res ->
+            if (res.startsWith("R")) {
+                whiteListFullName.add(packageName + "." + res)
+            } else {
+                whiteListFullName.add(res)
+            }
+        }
+
+        InputParam.Builder builder = new InputParam.Builder()
+                .setMappingFile(configuration.mappingFile)
+                .setWhiteList(whiteListFullName)
+                .setUse7zip(configuration.use7zip)
+                .setMetaName(configuration.metaName)
+                .setKeepRoot(configuration.keepRoot)
+                .setCompressFilePattern(configuration.compressFilePattern)
+                .setZipAlign(getZipAlignPath())
+                .setSevenZipPath(sevenzip.path)
+                .setOutBuilder(useFolder(config.file))
+                .setApkPath(absPath)
+                .setUseSign(configuration.useSign)
+                .setDigestAlg(configuration.digestalg)
+
+        if (configuration.finalApkBackupPath != null && configuration.finalApkBackupPath.length() > 0) {
+            builder.setFinalApkBackupPath(configuration.finalApkBackupPath)
+        } else {
+            builder.setFinalApkBackupPath(absPath)
+        }
+
+        if (configuration.useSign) {
+            if (signConfig == null) {
+                throw new GradleException("can't the get signConfig for release build")
+            }
+            builder.setSignFile(signConfig.storeFile)
+                    .setKeypass(signConfig.keyPassword)
+                    .setStorealias(signConfig.keyAlias)
+                    .setStorepass(signConfig.storePassword)
+            if (signConfig.hasProperty('v2SigningEnabled') && signConfig.v2SigningEnabled) {
+                builder.setSignatureType(InputParam.SignatureType.SchemaV2)
+            }
+        }
+        InputParam inputParam = builder.create()
+        Main.gradleRun(inputParam)
     }
 }

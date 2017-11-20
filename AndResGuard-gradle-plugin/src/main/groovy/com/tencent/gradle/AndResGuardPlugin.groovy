@@ -19,6 +19,7 @@ class AndResGuardPlugin implements Plugin<Project> {
 
         project.afterEvaluate {
             def android = project.extensions.android
+            createTask(project, "UseApk")
 
             android.applicationVariants.all { variant ->
                 def variantName = variant.name.capitalize()
@@ -43,7 +44,9 @@ class AndResGuardPlugin implements Plugin<Project> {
         def taskName = "resguard${variantName}"
         if (project.tasks.findByPath(taskName) == null) {
             def task = project.task(taskName, type: AndResGuardTask)
-            task.dependsOn "assemble${variantName}"
+            if (variantName != "UseApk") {
+                task.dependsOn "assemble${variantName}"
+            }
         }
     }
 }

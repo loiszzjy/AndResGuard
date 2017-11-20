@@ -17,6 +17,8 @@ class AndResGuardExtension {
     Iterable<String> compressFilePattern
     String finalApkBackupPath
     String digestalg
+    String sourceApk
+    String sourceBuildType
 
     AndResGuardExtension() {
         use7zip = false
@@ -28,6 +30,8 @@ class AndResGuardExtension {
         mappingFile = null
         finalApkBackupPath = null
         digestalg = null
+        sourceApk = null
+        sourceBuildType = null
     }
 
     Iterable<String> getCompressFilePattern() {
@@ -66,6 +70,14 @@ class AndResGuardExtension {
         return digestalg
     }
 
+    String getSourceString() {
+        return sourceApk;
+    }
+
+    String getSourceBuildType() {
+        return sourceBuildType
+    }
+
     @Override
     String toString() {
         """| use7zip = ${use7zip}
@@ -76,6 +88,8 @@ class AndResGuardExtension {
            | compressFilePattern = ${compressFilePattern}
            | finalApkBackupPath = ${finalApkBackupPath}
            | digstalg = ${digestalg}
+           | sourceApk = ${sourceApk}
+           | sourceBuildType = ${sourceBuildType}
         """.stripMargin()
     }
 }
