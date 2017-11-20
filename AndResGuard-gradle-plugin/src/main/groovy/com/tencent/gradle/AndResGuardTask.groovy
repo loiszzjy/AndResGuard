@@ -8,6 +8,8 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.TaskAction
 
+import javax.print.DocFlavor
+
 /**
  * The configuration properties.
  *
@@ -31,14 +33,15 @@ class AndResGuardTask extends DefaultTask {
                 String variantName = this.name["resguard".length()..-1]
                 if (variantName.equalsIgnoreCase(variant.buildType.name as String)
                     || isTargetFlavor(variantName, variant.productFlavors, variant.buildType.name)
-                    || variantName.equalsIgnoreCase("UseApk")
+                    || variantName.equalsIgnoreCase(AndResGuardPlugin.USE_APK_TASK_NAME)
                 ) {
                     buildConfigs << new BuildInfo(
                             output.outputFile,
                             variant.variantData.variantConfiguration.signingConfig,
                             variant.variantData.variantConfiguration.applicationId,
                             variant.buildType.name,
-                            variant.productFlavors
+                            variant.productFlavors,
+                            variantName
                     )
                 }
             }
@@ -71,17 +74,27 @@ class AndResGuardTask extends DefaultTask {
         project.logger.info("[AndResGuard] configuartion:$configuration")
         project.logger.info("[AndResGuard] BuildConfigs:$buildConfigs")
 
-        if (StringUtil.isPresent(configuration.sourceApk)
-                && new File(configuration.sourceApk).exists()) {
-            buildConfigs.each { config ->
-                if (config.buildType == configuration.sourceBuildType
-                        && config.flavors.size() > 0
-                        && config.flavors.get(0).name == configuration.sourceFlavor) {
-                    RunGradleTask(config, configuration.sourceApk)
+        buildConfigs.each { config ->
+            if (config.taskName == AndResGuardPlugin.USE_APK_TASK_NAME) {
+                if (StringUtil.isBlank(configuration.sourceApk) && !new File(configuration.sourceApk).exists()) {
+                    throw new PathNotExist("Original APK not existed for " + AndResGuardPlugin.USE_APK_TASK_NAME)
                 }
-            }
-        } else {
-            buildConfigs.each { config ->
+                if (config.flavors.productFlavors.size() > 0 && StringUtil.isBlank(configuration.sourceFlavor)) {
+                    throw new RuntimeException("Must setup sourceFlavor when flavors exist in build.gradle")
+                }
+                if (StringUtil.isBlank(configuration.sourceBuildType)) {
+                    throw new RuntimeException("Must setup sourceBuildType when flavors exist in build.gradle")
+                }
+                if (config.buildType == configuration.sourceBuildType) {
+                    if (StringUtil.isBlank(configuration.sourceFlavor)
+                        || (StringUtil.isPresent(configuration.sourceFlavor)
+                            && config.flavors.size() > 0
+                            && config.flavors.get(0).name == configuration.sourceFlavor)
+                    ) {
+                        RunGradleTask(config, configuration.sourceApk)
+                    }
+                }
+            } else {
                 if (config.file == null || !config.file.exists()) {
                     throw new PathNotExist("Original APK not existed")
                 }
