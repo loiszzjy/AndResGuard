@@ -9,12 +9,14 @@ class BuildInfo {
     def signConfig
     def packageName
     def buildType
+    def flavors
 
-    BuildInfo(file, sign, packageName, buildType) {
+    BuildInfo(file, sign, packageName, buildType, flavors) {
         this.file = file
         this.signConfig = sign
         this.packageName = packageName
         this.buildType = buildType
+        this.flavors = flavors
     }
 
     @Override
@@ -22,6 +24,7 @@ class BuildInfo {
         """| file = ${file}
            | packageName = ${packageName}
            | buildType = ${buildType}
+           | flavors = ${flavors}
         """.stripMargin()
     }
 }

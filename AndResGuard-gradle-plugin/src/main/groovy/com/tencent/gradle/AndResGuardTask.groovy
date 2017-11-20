@@ -37,7 +37,8 @@ class AndResGuardTask extends DefaultTask {
                             output.outputFile,
                             variant.variantData.variantConfiguration.signingConfig,
                             variant.variantData.variantConfiguration.applicationId,
-                            variant.buildType.name
+                            variant.buildType.name,
+                            variant.productFlavors
                     )
                 }
             }
@@ -73,7 +74,9 @@ class AndResGuardTask extends DefaultTask {
         if (StringUtil.isPresent(configuration.sourceApk)
                 && new File(configuration.sourceApk).exists()) {
             buildConfigs.each { config ->
-                if (config.buildType == configuration.sourceBuildType) {
+                if (config.buildType == configuration.sourceBuildType
+                        && config.flavors.size() > 0
+                        && config.flavors.get(0).name == configuration.sourceFlavor) {
                     RunGradleTask(config, configuration.sourceApk)
                 }
             }

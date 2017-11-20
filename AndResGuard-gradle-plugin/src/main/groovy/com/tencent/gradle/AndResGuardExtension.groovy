@@ -19,6 +19,7 @@ class AndResGuardExtension {
     String digestalg
     String sourceApk
     String sourceBuildType
+    String sourceFlavor
 
     AndResGuardExtension() {
         use7zip = false
@@ -32,6 +33,7 @@ class AndResGuardExtension {
         digestalg = null
         sourceApk = null
         sourceBuildType = null
+        sourceFlavor = null
     }
 
     Iterable<String> getCompressFilePattern() {
@@ -70,12 +72,16 @@ class AndResGuardExtension {
         return digestalg
     }
 
-    String getSourceString() {
-        return sourceApk;
+    String getSourceApk() {
+        return sourceApk
     }
 
     String getSourceBuildType() {
         return sourceBuildType
+    }
+
+    String getSourceFlavor() {
+        return sourceFlavor
     }
 
     @Override
@@ -90,6 +96,7 @@ class AndResGuardExtension {
            | digstalg = ${digestalg}
            | sourceApk = ${sourceApk}
            | sourceBuildType = ${sourceBuildType}
+           | sourceFlavor = ${sourceFlavor}
         """.stripMargin()
     }
 }
